@@ -30,23 +30,20 @@ export default function syncHistoryWithStore(history, store, {
     )
   }
 
-  let initialLocation
   let currentLocation
   let isTimeTraveling
   let unsubscribeFromStore
   let unsubscribeFromHistory
 
   // What does the store say about current location?
-  const getLocationInStore = (useInitialIfEmpty) => {
+  function getLocationInStore() {
     const locationState = selectLocationState(store.getState())
-    return locationState.locationBeforeTransitions ||
-      (useInitialIfEmpty ? initialLocation : undefined)
+    return locationState.locationBeforeTransitions
   }
-
   // If the store is replayed, update the URL in the browser to match.
   if (adjustUrlOnReplay) {
     const handleStoreChange = () => {
-      const locationInStore = getLocationInStore(true)
+      const locationInStore = getLocationInStore()
       if (currentLocation === locationInStore) {
         return
       }
@@ -64,27 +61,14 @@ export default function syncHistoryWithStore(history, store, {
     unsubscribeFromStore = store.subscribe(handleStoreChange)
     handleStoreChange()
   }
-
   // Whenever location changes, dispatch an action to get it in the store
-  const handleLocationChange = (location) => {
+  function handleLocationChange(location) {
     // ... unless we just caused that location change
-    if (isTimeTraveling) {
+    if (isTimeTraveling || currentLocation === location) {
       return
     }
-
     // Remember where we are
     currentLocation = location
-
-    // Are we being called for the first time?
-    if (!initialLocation) {
-      // Remember as a fallback in case state is reset
-      initialLocation = location
-
-      // Respect persisted location, if any
-      if (getLocationInStore()) {
-        return
-      }
-    }
 
     // Tell the store to update by dispatching an action
     store.dispatch({
@@ -93,14 +77,13 @@ export default function syncHistoryWithStore(history, store, {
     })
   }
   unsubscribeFromHistory = history.listen(handleLocationChange)
-
   // The enhanced history uses store as source of truth
   return {
     ...history,
     // The listeners are subscribed to the store instead of history
     listen(listener) {
       // Copy of last location.
-      let lastPublishedLocation = getLocationInStore(true)
+      let lastPublishedLocation = getLocationInStore()
       // History listeners expect a synchronous call
       listener(lastPublishedLocation)
 
@@ -108,7 +91,6 @@ export default function syncHistoryWithStore(history, store, {
       // only applies changes in subscriptions on next dispatch
       let unsubscribed = false
       const unsubscribeFromStore = store.subscribe(() => {
-        const currentLocation = getLocationInStore(true)
         if (currentLocation === lastPublishedLocation) {
           return
         }

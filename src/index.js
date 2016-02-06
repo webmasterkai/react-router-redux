@@ -1,5 +1,5 @@
 export syncHistoryWithStore from './sync'
-export { LOCATION_CHANGE, routerReducer } from './reducer'
+export { LOCATION_CHANGE, createRoutingReducer } from './reducer'
 
 export {
   CALL_HISTORY_METHOD,
@@ -7,3 +7,5 @@ export {
   routeActions
 } from './actions'
 export routerMiddleware from './middleware'
+
+export { getInitState } from './utils'
